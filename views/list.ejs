@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ระบบจัดการสินค้า</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .description-cell {
+            max-width: 200px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .product-img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 6px;
+        }
+        .no-img {
+            width: 60px;
+            height: 60px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+        }
+        td, th { vertical-align: middle !important; }
+    </style>
+</head>
+<body>
+<div class="container mt-4">
+    <h2>ระบบจัดการสินค้า
+        <a href="/insert" class="btn btn-primary btn-sm ms-2">+ เพิ่มสินค้า</a>
+        <small class="text-muted fs-6 ms-2">ทั้งหมด <%= total %> รายการ</small>
+    </h2>
+    <hr>
+
+    <!-- ค้นหา -->
+    <form method="GET" action="/" class="mb-3 d-flex gap-2">
+        <input type="text" name="search" class="form-control" style="max-width:300px"
+               placeholder="ค้นหาชื่อสินค้า..." value="<%= search || '' %>">
+        <% if (selectedCategory) { %>
+        <input type="hidden" name="category" value="<%= selectedCategory %>">
+        <% } %>
+        <button type="submit" class="btn btn-outline-primary">ค้นหา</button>
+        <a href="/" class="btn btn-outline-secondary">รีเซ็ต</a>
+    </form>
+
+    <!-- กรองหมวดหมู่ -->
+    <div class="mb-3">
+        <a href="/" class="btn btn-sm <%= !selectedCategory ? 'btn-secondary' : 'btn-outline-secondary' %>">ทั้งหมด</a>
+        <% categories.forEach(cat => { %>
+        <a href="/?category=<%= cat %>"
+           class="btn btn-sm <%= selectedCategory === cat ? 'btn-secondary' : 'btn-outline-secondary' %>">
+           <%= cat %>
+        </a>
+        <% }) %>
+    </div>
+
+    <table class="table table-bordered table-hover align-middle">
+        <thead class="table-dark text-center">
+            <tr>
+                <th style="width:40px">#</th>
+                <th style="width:70px">รูปภาพ</th>
+                <th style="width:160px">ชื่อสินค้า</th>
+                <th style="width:110px">หมวดหมู่</th>
+                <th style="width:100px">ราคา</th>
+                <th style="width:80px">สต็อก</th>
+                <th style="width:70px">หน่วย</th>
+                <th>รายละเอียด</th>
+                <th style="width:150px">วันที่แก้ไขล่าสุด</th>
+                <th style="width:120px">จัดการ</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% products.forEach((p, i) => {
+                var stockClass = '';
+                var stockBadge = '';
+                if (p.stock === 0) {
+                    stockClass = 'table-danger';
+                    stockBadge = '<span class="badge bg-danger">หมด</span>';
+                } else if (p.stock <= 5) {
+                    stockClass = 'table-warning';
+                    stockBadge = '<span class="badge bg-warning text-dark">ใกล้หมด</span>';
+                } else if (p.stock <= 20) {
+                    stockClass = 'table-info';
+                    stockBadge = '<span class="badge bg-info text-dark">เหลือน้อย</span>';
+                }
+
+                var updatedDate = p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('th-TH', {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                }) : '-';
+            %>
+            <tr class="<%= stockClass %>">
+                <td class="text-center"><%= (currentPage - 1) * 10 + i + 1 %></td>
+                <td class="text-center">
+                    <% if (p.imageUrl) { %>
+                    <img src="<%= p.imageUrl %>" class="product-img" alt="<%= p.name %>">
+                    <% } else { %>
+                    <div class="no-img mx-auto">📦</div>
+                    <% } %>
+                </td>
+                <td><strong><%= p.name %></strong></td>
+                <td class="text-center">
+                    <span class="badge bg-secondary"><%= p.category %></span>
+                </td>
+                <td class="text-center"><%= p.price.toLocaleString() %> บาท</td>
+                <td class="text-center">
+                    <%= p.stock %><br>
+                    <%- stockBadge %>
+                </td>
+                <td class="text-center"><%= p.unit %></td>
+                <td class="description-cell" title="<%= p.description %>"><%= p.description %></td>
+                <td class="text-center" style="font-size:13px"><%= updatedDate %></td>
+                <td class="text-center">
+                    <a href="/update/<%= p._id %>" class="btn btn-warning btn-sm">แก้ไข</a>
+                    <a href="/delete/<%= p._id %>" class="btn btn-danger btn-sm"
+                       onclick="return confirm('ลบสินค้านี้?')">ลบ</a>
+                </td>
+            </tr>
+            <% }) %>
+        </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <% if (totalPages > 1) { %>
+    <nav>
+        <ul class="pagination justify-content-center">
+            <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+                <a class="page-link" href="?page=<%= currentPage - 1 %><%= selectedCategory ? '&category=' + selectedCategory : '' %><%= search ? '&search=' + search : '' %>">ก่อนหน้า</a>
+            </li>
+            <% for (var p = 1; p <= totalPages; p++) { %>
+            <li class="page-item <%= currentPage === p ? 'active' : '' %>">
+                <a class="page-link" href="?page=<%= p %><%= selectedCategory ? '&category=' + selectedCategory : '' %><%= search ? '&search=' + search : '' %>"><%= p %></a>
+            </li>
+            <% } %>
+            <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+                <a class="page-link" href="?page=<%= currentPage + 1 %><%= selectedCategory ? '&category=' + selectedCategory : '' %><%= search ? '&search=' + search : '' %>">ถัดไป</a>
+            </li>
+        </ul>
+    </nav>
+    <% } %>
+
+</div>
+</body>
+</html>
